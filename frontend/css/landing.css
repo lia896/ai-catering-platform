@@ -91,8 +91,34 @@ main { max-width: none; padding: 0; }
 .occasion-card img { height: 96px; width: auto; max-width: 100%; object-fit: contain; }
 
 /* ---------- how it works ---------- */
-.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-8); }
-.step { display: grid; gap: var(--space-2); justify-items: start; align-content: start; }
+/* An ordered path, not three equal cards: numbered stops on a dashed line, and the approval step carries the weight. */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-8); counter-reset: step; }
+.step { display: grid; gap: var(--space-2); justify-items: start; align-content: start; position: relative; padding-inline-start: 56px; counter-increment: step; }
+.step::before {
+  content: counter(step);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: var(--outline-width) solid var(--color-text);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block: 48px calc(-1 * var(--space-8) + 8px);
+  inset-inline-start: 19px;
+  border-inline-start: 2px dashed var(--color-control-border);
+}
+.step:last-child h3 { color: var(--color-accent); }
+.step:last-child p { color: var(--color-text); }
 .step-icon { height: 92px; width: auto; max-width: 140px; object-fit: contain; }
 .step h3 { font-size: var(--text-xl); font-family: var(--font); }
 .step p { color: var(--color-muted); max-width: 34ch; }
@@ -130,7 +156,14 @@ main { max-width: none; padding: 0; }
 
 /* ---------- wider screens ---------- */
 @media (min-width: 760px) {
-  .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .steps { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr); }
+  .step { padding-inline-start: 0; padding-block-start: 56px; }
+  .step:not(:last-child)::after {
+    inset-block: 19px auto;
+    inset-inline: 48px calc(-1 * var(--space-8) + 8px);
+    border-inline-start: 0;
+    border-block-start: 2px dashed var(--color-control-border);
+  }
 }
 @media (min-width: 900px) {
   .hero { grid-template-columns: 1.1fr 0.9fr; padding-block: var(--space-12); }

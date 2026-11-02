@@ -56,9 +56,9 @@
 .top.is-stuck { box-shadow: 0 8px 20px -14px rgb(32 32 32 / 0.5); }
 
 /* ---------- landing: interactions ---------- */
-.occasion-card img { transition: transform 0.35s var(--ease-spring); }
+.occasion-card img { transition: transform 0.35s var(--ease-out); }
 .occasion-card:hover img, .occasion-card:focus-visible img { transform: rotate(-4deg) scale(1.1); }
-.step-icon { transition: transform 0.4s var(--ease-spring); }
+.step-icon { transition: transform 0.4s var(--ease-out); }
 .step:hover .step-icon { transform: rotate(-6deg) scale(1.06); }
 
 /* ---------- app: step arrival ---------- */
@@ -68,12 +68,12 @@
 .app.enter > :nth-child(n + 4) { animation-delay: 0.15s; }
 
 .page-mascot img { transform-origin: 50% 100%; animation: y-wave 1.3s 0.5s var(--ease-out) both; }
-.stepper-item.is-current .stepper-mark { animation: y-pop 0.45s var(--ease-spring) both; }
+.stepper-item.is-current .stepper-mark { animation: y-rise 0.35s var(--ease-out) both; }
 
 /* ---------- app: feedback ---------- */
-.occasion-art img { transition: transform 0.3s var(--ease-spring); }
+.occasion-art img { transition: transform 0.3s var(--ease-out); }
 .occasion:hover .occasion-art img { transform: rotate(-3deg) scale(1.08); }
-.occasion input:checked + .occasion-body .occasion-art { animation: y-hop 0.5s var(--ease-spring); }
+.occasion input:checked + .occasion-body .occasion-art { animation: y-hop 0.5s var(--ease-out); }
 
 .dish-card.bump { animation: y-bump 0.35s var(--ease-out); }
 .side-line.is-new, .ln.is-new { animation: y-rise 0.4s var(--ease-out) both; }
