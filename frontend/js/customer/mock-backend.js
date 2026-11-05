@@ -1,8 +1,10 @@
-// MOCK BACKEND for UI development only.
-// The real backend is authoritative for prices, quantities and order state (ADR-0003).
-// Everything here mirrors the shapes in docs/API_CONTRACTS.md so views can be switched to
-// api() calls without changing their markup. Values marked PLACEHOLDER are NOT business rules.
+// Catalog data and client-side helpers for the customer app.
+// The menu, categories and delivery zones come from the backend (loadCatalog); the arrays below
+// are the design-review fallback used with ?demo=. The backend is authoritative for prices and
+// order state (ADR-0003); priceOrder here is only the live preview. Values marked PLACEHOLDER
+// are NOT business rules.
 
+import { api } from "../api.js";
 import { addDays, toIsoDate } from "../lib/format.js";
 
 export const CATEGORIES = [
@@ -57,6 +59,35 @@ const SLOTS = {
 };
 
 const LEAD_DAYS = 2; // PLACEHOLDER minimum lead time (OPEN #5)
+
+const UNIT_FROM_API = { per_tray: "tray", per_weight: "kg", per_item: "item", per_guest: "guest" };
+
+/** Replace the demo catalog with the real one, in place, so every importer sees it. */
+export async function loadCatalog() {
+  const [categories, dishes, zones] = await Promise.all([
+    api("/api/catalog/categories"), api("/api/catalog/dishes"), api("/api/catalog/delivery-zones"),
+  ]);
+  // shortcut: per-guest portions and counter steps aren't in the database yet (OPEN #3), so they
+  // are borrowed from the demo dish with the same name; move them to quantity_rules once decided.
+  const hints = new Map(DISHES.map((d) => [d.name, { perGuest: d.perGuest, step: d.step }]));
+  CATEGORIES.splice(0, CATEGORIES.length, ...categories);
+  DISHES.splice(0, DISHES.length, ...dishes.map((d) => ({
+    id: d.id,
+    categoryId: d.category_id,
+    name: d.name,
+    description: d.description,
+    image: d.image_url,
+    price: Number(d.unit_price),
+    unit: UNIT_FROM_API[d.pricing_unit],
+    kashrut: d.kashrut,
+    vegetarian: d.is_vegetarian,
+    vegan: d.is_vegan,
+    // A full verified list, or null (unknown) - never presented as safe.
+    allergens: d.allergens_complete ? d.allergens.filter((a) => a.status === "contains").map((a) => a.name) : null,
+    ...hints.get(d.name),
+  })));
+  ZONES.splice(0, ZONES.length, ...zones.flatMap((z) => z.cities.map((city) => ({ city, fee: Number(z.fee) }))));
+}
 
 export function minEventDate() {
   return toIsoDate(addDays(new Date(), LEAD_DAYS));
@@ -233,7 +264,8 @@ export function assistantReply(order, rawText) {
   if (/קינוח|מתוק|עוגה|סוכר/.test(text)) {
     const hasDessert = inOrder.some((id) => getDish(id).categoryId === "desserts");
     if (hasDessert) return reply("כבר יש בהזמנה קינוח. אפשר לשנות את הכמות בסיכום ההזמנה.");
-    const dish = getDish("d15");
+    const dish = DISHES.find((d) => d.name === "פלטת פירות העונה") ?? DISHES.find((d) => d.categoryId === "desserts" && d.vegan);
+    if (!dish) return reply("כרגע אין בתפריט קינוח שמתאים לכולם.");
     return reply(`אפשר להוסיף את ${dish.name}, שמתאימה גם לאורחים טבעוניים.`, [{ op: "add_item", dish_id: dish.id, quantity: recommendedQty(dish, order.event) }]);
   }
 

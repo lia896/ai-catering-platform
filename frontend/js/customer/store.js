@@ -4,6 +4,8 @@ import {
   approveProposal, assistantReply, getDish, newOrder, priceOrder, qtyLabel, recommendedQty,
   validateContact, validateEvent,
 } from "./mock-backend.js";
+import { api } from "../api.js";
+import { authHeaders } from "../supabase.js";
 
 const STORAGE_KEY = "catering.customer.draft.v1";
 export const STEPS = ["event", "menu", "summary", "status"];
@@ -88,27 +90,71 @@ export function setContact(patch) {
   commit({ ...state, order: { ...state.order, contact: { ...state.order.contact, ...patch } } });
 }
 
-export function submitOrder() {
+// Messages for backend error codes; anything else falls back to a generic retry message.
+const SUBMIT_ERRORS = {
+  date_too_soon: "התאריך קרוב מדי. נדרשים לפחות יומיים מראש.",
+  date_blocked: "התאריך הזה סגור להזמנות. בחרו תאריך אחר.",
+  delivery_zone_not_found: "אין עדיין משלוחים לעיר הזו. אפשר לבחור איסוף עצמי.",
+  dish_unavailable: "חלק מהמנות כבר לא זמינות. הסירו אותן ונסו שוב.",
+  unauthenticated: "פג תוקף הכניסה. היכנסו מחדש ונסו שוב.",
+};
+
+export async function submitOrder() {
   const { order } = state;
   const errors = { ...validateContact(order.contact) };
   if (!Object.keys(order.items).length) errors.items = "הוסיפו לפחות מנה אחת להזמנה";
   if (Object.keys(validateEvent(order.event)).length) errors.event = "פרטי האירוע חסרים או לא תקינים";
   if (Object.keys(errors).length) return { errors };
-  const pricing = priceOrder(order);
+
+  // The backend prices the order and freezes the snapshot; the preview prices are not sent.
+  let submitted;
+  try {
+    const headers = await authHeaders();
+    const draft = await api("/api/orders", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ event: order.event, items: order.items, contact: order.contact }),
+    });
+    submitted = await api(`/api/orders/${draft.id}/submit`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ version: draft.version }),
+    });
+  } catch (error) {
+    return { errors: { submit: SUBMIT_ERRORS[error.code] ?? "לא הצלחנו לשלוח את הבקשה. נסו שוב בעוד רגע." } };
+  }
+
   const snapshot = {
-    submittedAt: new Date().toISOString(),
-    lines: pricing.lines.map((l) => ({ name: l.dish.name, qty: qtyLabel(l.dish, l.qty), unitPrice: l.unitPrice, lineTotal: l.lineTotal })),
-    subtotal: pricing.subtotal,
-    deliveryFee: pricing.deliveryFee,
-    total: pricing.total,
+    submittedAt: submitted.submitted_at,
+    lines: submitted.items.map((i) => {
+      const dish = getDish(i.dish_id);
+      const qty = Number(i.quantity);
+      return { name: i.name, qty: dish ? qtyLabel(dish, qty) : String(qty), unitPrice: Number(i.unit_price), lineTotal: Number(i.line_total) };
+    }),
+    subtotal: Number(submitted.subtotal),
+    deliveryFee: Number(submitted.delivery_fee),
+    total: Number(submitted.total),
   };
   commit({
     ...state,
     step: "status",
-    order: { ...order, status: "pending_approval", snapshot, version: order.version + 1 },
+    order: { ...order, serverId: submitted.id, status: submitted.status, snapshot, version: order.version + 1 },
     chat: { ...state.chat, open: false },
   });
   return { errors: {} };
+}
+
+/** Live status from the database; ignored if the customer has since started a new order. */
+export function setServerStatus(serverId, status, ownerNote) {
+  if (state.order.serverId !== serverId) return;
+  if (state.order.status === status && state.order.ownerNote === (ownerNote ?? "")) return;
+  commit({ ...state, order: { ...state.order, status, ownerNote: ownerNote ?? "" } });
+}
+
+/** Drop dishes no longer on the menu (e.g. a draft saved before the real menu loaded). */
+export function pruneItems(validIds) {
+  const items = Object.fromEntries(Object.entries(state.order.items).filter(([id]) => validIds.has(id)));
+  if (Object.keys(items).length !== Object.keys(state.order.items).length) commit({ ...state, order: { ...state.order, items } });
 }
 
 export function startOver() {

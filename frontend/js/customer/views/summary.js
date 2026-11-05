@@ -45,13 +45,21 @@ export function mountSummary(root) {
 
   const submitBtn = h("button", { class: "btn btn-primary btn-block", type: "submit" }, "שליחת בקשה להצעת מחיר");
 
-  const form = h("form", { class: "panel stack", novalidate: true, onsubmit: (ev) => {
+  const form = h("form", { class: "panel stack", novalidate: true, onsubmit: async (ev) => {
     ev.preventDefault();
-    const { errors } = submitOrder();
+    if (submitBtn.disabled) return;
+    submitBtn.disabled = true;
+    submitBtn.setAttribute("aria-busy", "true");
+    const { errors } = await submitOrder();
+    submitBtn.disabled = false;
+    submitBtn.removeAttribute("aria-busy");
     showErr(nameErr, name, errors.name);
     showErr(phoneErr, phone, errors.phone);
-    itemsError.hidden = !errors.items;
-    fill(itemsError, ...(errors.items ? [icon("warning"), errors.items] : []));
+    // The same alert box carries "no dishes" and server-side refusals (date closed, zone, session).
+    const message = errors.items ?? errors.submit;
+    itemsError.hidden = !message;
+    fill(itemsError, ...(message ? [icon("warning"), message] : []));
+    if (errors.submit) itemsError.scrollIntoView({ block: "center" });
     const firstInvalid = root.querySelector('[aria-invalid="true"]');
     if (firstInvalid) firstInvalid.focus();
     else if (errors.items) itemsError.scrollIntoView({ block: "center" });

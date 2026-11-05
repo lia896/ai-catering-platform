@@ -1,16 +1,20 @@
 // Customer login by email magic link (Supabase Auth). The session is kept by supabase-js in localStorage.
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
-import { api } from "./api.js";
+import { supabase } from "./supabase.js";
 
 const $ = (id) => document.getElementById(id);
 const form = $("login-form");
 const field = $("email-field");
 const error = $("email-error");
 
-const { supabase_url: url, supabase_anon_key: key } = await api("/config/public");
-const supabase = createClient(url, key);
+// Where to go after signing in; same-site paths only, so the link can't send people elsewhere.
+const wanted = new URLSearchParams(location.search).get("next") ?? "";
+const next = /^\/(?!\/)/.test(wanted) ? wanted : null;
 
 function show(session) {
+  if (session && next) {
+    location.replace(next);
+    return;
+  }
   form.hidden = Boolean(session) || !$("sent").hidden;
   $("signed-in").hidden = !session;
   if (session) {
@@ -54,7 +58,7 @@ form.addEventListener("submit", async (e) => {
   }
   const { error: sendError } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${location.origin}/login/` },
+    options: { emailRedirectTo: `${location.origin}/login/${next ? `?next=${encodeURIComponent(next)}` : ""}` },
   });
   button.disabled = false;
   if (sendError) return fail("לא הצלחנו לשלוח את הקישור. כדאי לנסות שוב בעוד דקה.");

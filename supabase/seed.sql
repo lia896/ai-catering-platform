@@ -150,3 +150,7 @@ insert into ai_messages (id, conversation_id, role, content, created_at) values
 
 insert into ai_change_proposals (id, order_id, conversation_id, base_order_version, changes, price_before, price_after, status, created_at, decided_at, executed_at) values
   ('4bd0e554-0363-5a3f-9e26-5af37a3885fb', '510c67c6-c2c9-5870-80ea-963249c3ae2b', '1668b312-14e6-58ec-ae77-627f28a85419', '1', '[{"op": "add_item", "dish_id": "d8", "quantity": 3}]', '1196', '1706', 'pending', '2026-11-02 11:01:44', null, null);
+update dish_categories set slug = v.slug
+from (values ('סלטים ומטבלים', 'salads'), ('עיקריות', 'mains'), ('דגים', 'fish'),
+             ('תוספות ולחמים', 'sides'), ('קינוחים', 'desserts'), ('שתייה', 'drinks')) as v(name, slug)
+where dish_categories.name = v.name;
