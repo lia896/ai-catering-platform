@@ -35,6 +35,19 @@ def is_blocked(conn: Connection, day: date) -> bool:
     )
 
 
+def slot_is_open(conn: Connection, fulfillment: str, day: date, slot: str) -> bool:
+    start, end = slot.split("-")
+    return bool(
+        conn.execute(
+            text("""select 1 from time_slots
+                    where is_active and fulfillment_type = cast(:f as fulfillment_type)
+                      and start_time = cast(:s as time) and end_time = cast(:e as time)
+                      and (weekday is null or weekday = extract(dow from cast(:d as date)))"""),
+            {"f": fulfillment, "s": start, "e": end, "d": day},
+        ).first()
+    )
+
+
 def zone_for_city(conn: Connection, city: str) -> dict | None:
     row = (
         conn.execute(

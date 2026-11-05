@@ -74,6 +74,8 @@ def create_draft(engine: Engine, user: AuthUser, body: OrderIn) -> dict:
     with engine.begin() as conn:
         if repo.is_blocked(conn, e.date):
             raise ApiError(422, "date_blocked", "This date is closed for orders")
+        if not repo.slot_is_open(conn, e.fulfillment, e.date, e.slot):
+            raise ApiError(422, "slot_unavailable", "This time slot is not available")
         zone = None
         if e.fulfillment == "delivery":
             zone = repo.zone_for_city(conn, e.city or "")

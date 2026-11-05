@@ -40,3 +40,22 @@ def dishes(conn: Connection) -> tuple[list[dict], int]:
 
 def delivery_zones(conn: Connection) -> list[dict]:
     return [dict(r) for r in conn.execute(ZONES_SQL).mappings()]
+
+
+# shortcut: weekday-specific slots are left out (none exist yet); add a date filter when they do.
+SLOTS_SQL = text("""
+    select fulfillment_type::text as fulfillment,
+           to_char(start_time, 'HH24:MI') || '-' || to_char(end_time, 'HH24:MI') as label
+    from time_slots where is_active and weekday is null
+    order by fulfillment_type, start_time
+""")
+
+BLOCKED_SQL = text("select date from blocked_dates where date >= current_date order by date")
+
+
+def availability(conn: Connection) -> dict:
+    slots: dict[str, list[str]] = {"pickup": [], "delivery": []}
+    for row in conn.execute(SLOTS_SQL).mappings():
+        slots[row["fulfillment"]].append(row["label"])
+    blocked = [r[0].isoformat() for r in conn.execute(BLOCKED_SQL)]
+    return {"slots": slots, "blocked_dates": blocked}

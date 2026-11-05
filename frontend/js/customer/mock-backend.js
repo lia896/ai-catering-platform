@@ -58,15 +58,23 @@ const SLOTS = {
   delivery: ["09:00-11:00", "11:00-13:00", "14:00-16:00"],
 };
 
-const LEAD_DAYS = 2; // PLACEHOLDER minimum lead time (OPEN #5)
+// PLACEHOLDER minimum lead time (OPEN #5); the backend's value replaces it in loadCatalog.
+let leadDays = 2;
+// Closed dates from the database; null until loaded (demo mode keeps the sample dates).
+let blocked = null;
 
 const UNIT_FROM_API = { per_tray: "tray", per_weight: "kg", per_item: "item", per_guest: "guest" };
 
 /** Replace the demo catalog with the real one, in place, so every importer sees it. */
 export async function loadCatalog() {
-  const [categories, dishes, zones] = await Promise.all([
+  const [categories, dishes, zones, availability] = await Promise.all([
     api("/api/catalog/categories"), api("/api/catalog/dishes"), api("/api/catalog/delivery-zones"),
+    api("/api/availability"),
   ]);
+  SLOTS.pickup = availability.slots.pickup;
+  SLOTS.delivery = availability.slots.delivery;
+  leadDays = availability.lead_days;
+  blocked = availability.blocked_dates;
   // shortcut: per-guest portions and counter steps aren't in the database yet (OPEN #3), so they
   // are borrowed from the demo dish with the same name; move them to quantity_rules once decided.
   const hints = new Map(DISHES.map((d) => [d.name, { perGuest: d.perGuest, step: d.step }]));
@@ -90,10 +98,11 @@ export async function loadCatalog() {
 }
 
 export function minEventDate() {
-  return toIsoDate(addDays(new Date(), LEAD_DAYS));
+  return toIsoDate(addDays(new Date(), leadDays));
 }
 
 export function blockedDates() {
+  if (blocked) return blocked;
   return [toIsoDate(addDays(new Date(), 5)), toIsoDate(addDays(new Date(), 11))];
 }
 

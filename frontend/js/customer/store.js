@@ -94,6 +94,7 @@ export function setContact(patch) {
 const SUBMIT_ERRORS = {
   date_too_soon: "התאריך קרוב מדי. נדרשים לפחות יומיים מראש.",
   date_blocked: "התאריך הזה סגור להזמנות. בחרו תאריך אחר.",
+  slot_unavailable: "חלון הזמן הזה כבר לא פנוי. בחרו חלון אחר.",
   delivery_zone_not_found: "אין עדיין משלוחים לעיר הזו. אפשר לבחור איסוף עצמי.",
   dish_unavailable: "חלק מהמנות כבר לא זמינות. הסירו אותן ונסו שוב.",
   unauthenticated: "פג תוקף הכניסה. היכנסו מחדש ונסו שוב.",

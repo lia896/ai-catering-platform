@@ -39,6 +39,12 @@ def delivery_zones() -> list[dict]:
         return catalog.delivery_zones(conn)
 
 
+@router.get("/availability")
+def availability() -> dict:
+    with get_engine().connect() as conn:
+        return {**catalog.availability(conn), "lead_days": orders.LEAD_DAYS}
+
+
 @router.post("/orders", status_code=201)
 def create_order(body: orders.OrderIn, user: CurrentUser) -> dict:
     return orders.create_draft(get_engine(), user, body)
